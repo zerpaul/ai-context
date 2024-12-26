@@ -3,6 +3,11 @@
   "displayName": "ai-context",
   "description": "Formats all file content and the directory structure within a folder in an AI readable format",
   "version": "0.0.1",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zerpaul/ai-context"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
