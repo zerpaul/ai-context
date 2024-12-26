@@ -1,73 +1,99 @@
-# aicontext README
+# AI Context Extractor
 
-This is the README for your extension "aicontext". After writing up a brief description, we recommend including the following sections.
+A VSCode extension that generates AI-readable context from your folders. This extension extracts the contents and structure of your folders into a well-formatted text file that's optimized for use with AI systems like ChatGPT, Claude, or other LLMs.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- 📁 Extracts complete folder structure and contents with a single click
+- 🗺️ Creates a clear hierarchy of your project's directory structure
+- 📝 Includes full file contents with clear separation and metadata
+- 🎯 Optimized output format for AI context windows
+- ⚡ Fast processing with progress indication
+- 🚫 Automatically skips node_modules and hidden directories
 
-For example if there is an image subfolder under your extension project workspace:
+## Usage
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Right-click on any folder in the VSCode explorer
+2. Select "Extract AI Context" from the context menu
+3. Wait for the extraction to complete
+4. A new file will be created in the selected folder with the format: `foldername_timestamp.txt`
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Output Format
+
+The generated file includes:
+
+### Project Metadata
+```
+PROJECT METADATA
+===============
+Project Root: /path/to/your/folder
+Scan Date: 2024-12-26T16:38:43.675Z
+Total Files: 42
+```
+
+### Directory Structure
+```
+DIRECTORY STRUCTURE
+==================
+/
+  └── main.cpp
+  └── utils.h
+/src/
+  └── components.ts
+  └── helpers.ts
+```
+
+### File Contents
+```
+FILE CONTENTS
+=============
+================================================================================
+Absolute Path: /path/to/your/folder/main.cpp
+Relative Path: main.cpp
+================================================================================
+
+[File contents here]
+```
+
+## Installation
+
+1. Install from VSCode Marketplace
+2. OR download the .vsix file and install manually:
+   ```bash
+   code --install-extension aicontext-0.0.1.vsix
+   ```
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VSCode 1.96.0 or higher
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+No additional settings required.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- None reported yet
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+Initial release:
+- Basic folder content extraction
+- Directory structure visualization
+- Full file content inclusion
+- Progress indication during extraction
+- Node modules and hidden directory exclusion
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Fixed issue #.
+## License
 
-### 1.1.0
-
-Added features X, Y, and Z.
+This extension is licensed under the MIT License.
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
-# ai-context
-# ai-context
+**Enjoy!** 🚀
