@@ -90,9 +90,6 @@ Initial release:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This extension is licensed under the MIT License.
 
 ---
 

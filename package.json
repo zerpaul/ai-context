@@ -4,6 +4,7 @@
   "description": "Formats all file content and the directory structure within a folder in an AI readable format",
   "version": "0.0.1",
   "icon": "icon.png",
+  "publisher": "paulzer-ai-context", 
   "repository": {
     "type": "git",
     "url": "https://github.com/zerpaul/ai-context"
