@@ -5,14 +5,19 @@ import * as fs from 'fs/promises';
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Context Extractor is now active');
 
-    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri, selectedFiles?: vscode.Uri[]) => {
+    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri) => {
         try {
-            // Handle multi-selection case
-            if (selectedFiles && selectedFiles.length > 0) {
+            // Get any additional selected files from the workspace
+            const selectedFiles = getSelectedFiles();
+            
+            // If we have selected files (including the one we right-clicked on)
+            if (selectedFiles.length > 0) {
                 const firstFile = selectedFiles[0];
                 const folderPath = path.dirname(firstFile.fsPath);
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const outputFileName = `selected_files_${timestamp}.txt`;
+                const outputFileName = selectedFiles.length > 1 ? 
+                    `selected_files_${timestamp}.txt` : 
+                    `single_file_${timestamp}.txt`;
                 const outputPath = path.join(folderPath, outputFileName);
 
                 await processFiles(selectedFiles, outputPath, folderPath);
@@ -20,39 +25,49 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            // Handle single file/folder case
-            if (!uri) {
-                vscode.window.showErrorMessage('Please select a file or folder to extract context from');
-                return;
+            // Handle folder processing
+            if (uri) {
+                const stats = await fs.stat(uri.fsPath);
+                if (stats.isDirectory()) {
+                    const folderPath = uri.fsPath;
+                    const folderName = path.basename(folderPath);
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const outputFileName = `${folderName}_${timestamp}.txt`;
+                    const outputPath = path.join(folderPath, outputFileName);
+
+                    await processFolderContent(folderPath, outputPath);
+                    await showSuccessMessage(outputFileName, outputPath);
+                    return;
+                }
             }
 
-            const stats = await fs.stat(uri.fsPath);
-            if (stats.isFile()) {
-                // Single file processing
-                const folderPath = path.dirname(uri.fsPath);
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const outputFileName = `single_file_${timestamp}.txt`;
-                const outputPath = path.join(folderPath, outputFileName);
-
-                await processFiles([uri], outputPath, folderPath);
-                await showSuccessMessage(outputFileName, outputPath);
-            } else {
-                // Folder processing (existing functionality)
-                const folderPath = uri.fsPath;
-                const folderName = path.basename(folderPath);
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const outputFileName = `${folderName}_${timestamp}.txt`;
-                const outputPath = path.join(folderPath, outputFileName);
-
-                await processFolderContent(folderPath, outputPath);
-                await showSuccessMessage(outputFileName, outputPath);
-            }
+            vscode.window.showErrorMessage('Please select a file or folder to extract context from');
         } catch (error) {
             vscode.window.showErrorMessage(`Error extracting context: ${error}`);
         }
     });
 
     context.subscriptions.push(disposable);
+}
+
+function getSelectedFiles(): vscode.Uri[] {
+    if (!vscode.window.activeTextEditor) {
+        // If no editor is active, check the explorer selection
+        return vscode.workspace.workspaceFolders 
+            ? Array.from(vscode.window.activeTextEditor?.document ? [vscode.Uri.file(vscode.window.activeTextEditor.document.uri.fsPath)] : [])
+                .concat(vscode.workspace.textDocuments
+                    .filter(doc => doc.uri.scheme === 'file')
+                    .map(doc => doc.uri))
+            : [];
+    }
+
+    // Get the selection from the active explorer
+    const selection = vscode.window.activeTextEditor.selection;
+    if (selection && !selection.isEmpty) {
+        return [vscode.window.activeTextEditor.document.uri];
+    }
+
+    return [];
 }
 
 async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: string): Promise<void> {
