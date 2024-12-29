@@ -5,106 +5,177 @@ import * as fs from 'fs/promises';
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Context Extractor is now active');
 
-    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri) => {
-        if (!uri) {
-            vscode.window.showErrorMessage('Please select a folder to extract context from');
-            return;
-        }
-
+    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri, selectedFiles?: vscode.Uri[]) => {
         try {
-            const folderPath = uri.fsPath;
-            const folderName = path.basename(folderPath);
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const outputFileName = `${folderName}_${timestamp}.txt`;
-            const outputPath = path.join(folderPath, outputFileName);
+            // Handle multi-selection case
+            if (selectedFiles && selectedFiles.length > 0) {
+                const firstFile = selectedFiles[0];
+                const folderPath = path.dirname(firstFile.fsPath);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const outputFileName = `selected_files_${timestamp}.txt`;
+                const outputPath = path.join(folderPath, outputFileName);
 
-            // Show progress indicator
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: "Extracting folder context...",
-                cancellable: true
-            }, async (progress) => {
-                // Project metadata
-                let output = 'PROJECT METADATA\n===============\n';
-                output += `Project Root: ${folderPath}\n`;
-                output += `Scan Date: ${new Date().toISOString()}\n`;
-
-                // Get all files recursively
-                const files = await getAllFiles(folderPath);
-                output += `Total Files: ${files.length}\n\n`;
-
-                progress.report({ message: "Building directory structure..." });
-
-                // Directory structure
-                output += 'DIRECTORY STRUCTURE\n==================\n';
-                const structure = new Map<string, string[]>();
-                
-                files.forEach(file => {
-                    const relPath = path.relative(folderPath, path.dirname(file));
-                    const fileName = path.basename(file);
-                    
-                    if (!structure.has(relPath)) {
-                        structure.set(relPath, []);
-                    }
-                    structure.get(relPath)?.push(fileName);
-                });
-
-                for (const [dir, fileList] of structure) {
-                    output += dir ? `/${dir}/\n` : '/\n';
-                    fileList.forEach(file => {
-                        output += `  └── ${file}\n`;
-                    });
-                }
-                output += '\n';
-
-                progress.report({ message: "Reading file contents..." });
-
-                // File contents
-                output += 'FILE CONTENTS\n=============\n\n';
-                
-                let processedFiles = 0;
-                for (const file of files) {
-                    try {
-                        const content = await fs.readFile(file, 'utf8');
-                        const separator = '='.repeat(80);
-                        output += `${separator}\n`;
-                        output += `Absolute Path: ${file}\n`;
-                        output += `Relative Path: ${path.relative(folderPath, file)}\n`;
-                        output += `${separator}\n\n`;
-                        output += content;
-                        output += '\n\n';
-
-                        processedFiles++;
-                        progress.report({ 
-                            message: `Processing files... (${processedFiles}/${files.length})`,
-                            increment: (100 / files.length)
-                        });
-                    } catch (error) {
-                        output += `Error reading file ${file}: ${error}\n\n`;
-                    }
-                }
-
-                // Write the output file
-                await fs.writeFile(outputPath, output, 'utf8');
-            });
-
-            // Show success message with option to open the file
-            const action = await vscode.window.showInformationMessage(
-                `Successfully extracted context to ${outputFileName}`,
-                'Open File'
-            );
-
-            if (action === 'Open File') {
-                const doc = await vscode.workspace.openTextDocument(outputPath);
-                await vscode.window.showTextDocument(doc);
+                await processFiles(selectedFiles, outputPath, folderPath);
+                await showSuccessMessage(outputFileName, outputPath);
+                return;
             }
 
+            // Handle single file/folder case
+            if (!uri) {
+                vscode.window.showErrorMessage('Please select a file or folder to extract context from');
+                return;
+            }
+
+            const stats = await fs.stat(uri.fsPath);
+            if (stats.isFile()) {
+                // Single file processing
+                const folderPath = path.dirname(uri.fsPath);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const outputFileName = `single_file_${timestamp}.txt`;
+                const outputPath = path.join(folderPath, outputFileName);
+
+                await processFiles([uri], outputPath, folderPath);
+                await showSuccessMessage(outputFileName, outputPath);
+            } else {
+                // Folder processing (existing functionality)
+                const folderPath = uri.fsPath;
+                const folderName = path.basename(folderPath);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const outputFileName = `${folderName}_${timestamp}.txt`;
+                const outputPath = path.join(folderPath, outputFileName);
+
+                await processFolderContent(folderPath, outputPath);
+                await showSuccessMessage(outputFileName, outputPath);
+            }
         } catch (error) {
-            vscode.window.showErrorMessage(`Error extracting folder context: ${error}`);
+            vscode.window.showErrorMessage(`Error extracting context: ${error}`);
         }
     });
 
     context.subscriptions.push(disposable);
+}
+
+async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: string): Promise<void> {
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Extracting file context...",
+        cancellable: true
+    }, async (progress) => {
+        let output = 'FILE EXTRACTION\n===============\n';
+        output += `Root Path: ${rootPath}\n`;
+        output += `Scan Date: ${new Date().toISOString()}\n`;
+        output += `Total Files: ${files.length}\n\n`;
+
+        output += 'SELECTED FILES\n==============\n';
+        files.forEach(file => {
+            output += `${path.relative(rootPath, file.fsPath)}\n`;
+        });
+        output += '\n';
+
+        output += 'FILE CONTENTS\n=============\n\n';
+
+        let processedFiles = 0;
+        for (const file of files) {
+            try {
+                const content = await fs.readFile(file.fsPath, 'utf8');
+                const separator = '='.repeat(80);
+                output += `${separator}\n`;
+                output += `Absolute Path: ${file.fsPath}\n`;
+                output += `Relative Path: ${path.relative(rootPath, file.fsPath)}\n`;
+                output += `${separator}\n\n`;
+                output += content;
+                output += '\n\n';
+
+                processedFiles++;
+                progress.report({
+                    message: `Processing files... (${processedFiles}/${files.length})`,
+                    increment: (100 / files.length)
+                });
+            } catch (error) {
+                output += `Error reading file ${file.fsPath}: ${error}\n\n`;
+            }
+        }
+
+        await fs.writeFile(outputPath, output, 'utf8');
+    });
+}
+
+async function processFolderContent(folderPath: string, outputPath: string): Promise<void> {
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Extracting folder context...",
+        cancellable: true
+    }, async (progress) => {
+        let output = 'PROJECT METADATA\n===============\n';
+        output += `Project Root: ${folderPath}\n`;
+        output += `Scan Date: ${new Date().toISOString()}\n`;
+
+        const files = await getAllFiles(folderPath);
+        output += `Total Files: ${files.length}\n\n`;
+
+        progress.report({ message: "Building directory structure..." });
+
+        output += 'DIRECTORY STRUCTURE\n==================\n';
+        const structure = new Map<string, string[]>();
+        
+        files.forEach(file => {
+            const relPath = path.relative(folderPath, path.dirname(file));
+            const fileName = path.basename(file);
+            
+            if (!structure.has(relPath)) {
+                structure.set(relPath, []);
+            }
+            structure.get(relPath)?.push(fileName);
+        });
+
+        for (const [dir, fileList] of structure) {
+            output += dir ? `/${dir}/\n` : '/\n';
+            fileList.forEach(file => {
+                output += `  └── ${file}\n`;
+            });
+        }
+        output += '\n';
+
+        progress.report({ message: "Reading file contents..." });
+
+        output += 'FILE CONTENTS\n=============\n\n';
+        
+        let processedFiles = 0;
+        for (const file of files) {
+            try {
+                const content = await fs.readFile(file, 'utf8');
+                const separator = '='.repeat(80);
+                output += `${separator}\n`;
+                output += `Absolute Path: ${file}\n`;
+                output += `Relative Path: ${path.relative(folderPath, file)}\n`;
+                output += `${separator}\n\n`;
+                output += content;
+                output += '\n\n';
+
+                processedFiles++;
+                progress.report({
+                    message: `Processing files... (${processedFiles}/${files.length})`,
+                    increment: (100 / files.length)
+                });
+            } catch (error) {
+                output += `Error reading file ${file}: ${error}\n\n`;
+            }
+        }
+
+        await fs.writeFile(outputPath, output, 'utf8');
+    });
+}
+
+async function showSuccessMessage(outputFileName: string, outputPath: string): Promise<void> {
+    const action = await vscode.window.showInformationMessage(
+        `Successfully extracted context to ${outputFileName}`,
+        'Open File'
+    );
+
+    if (action === 'Open File') {
+        const doc = await vscode.workspace.openTextDocument(outputPath);
+        await vscode.window.showTextDocument(doc);
+    }
 }
 
 async function getAllFiles(dirPath: string): Promise<string[]> {

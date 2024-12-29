@@ -2,7 +2,7 @@
   "name": "aicontext",
   "displayName": "ai-context",
   "description": "Formats all file content and the directory structure within a folder in an AI readable format",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "icon": "icon.png",
   "publisher": "paulzer-ai-context", 
   "repository": {
@@ -18,22 +18,22 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
-        {
-            "command": "aicontext.extractFolder",
-            "title": "Extract AI Context",
-            "icon": "$(symbol-file)"
-        }
-    ],
-    "menus": {
-        "explorer/context": [
-            {
-                "when": "explorerResourceIsFolder",
-                "command": "aicontext.extractFolder",
-                "group": "navigation"
-            }
-        ]
-    }
+      "commands": [
+          {
+              "command": "aicontext.extractFolder",
+              "title": "Extract AI Context",
+              "when": "explorerViewletVisible"
+          }
+      ],
+      "menus": {
+          "explorer/context": [
+              {
+                  "command": "aicontext.extractFolder",
+                  "group": "aiContext",
+                  "when": "explorerViewletVisible && (explorerResourceIsFolder || resourceLangId)"
+              }
+          ]
+      }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
