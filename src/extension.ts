@@ -5,15 +5,15 @@ import * as fs from 'fs/promises';
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Context Extractor is now active');
 
-    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri) => {
+    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri: vscode.Uri, selectedFiles?: vscode.Uri[]) => {
         try {
             if (!uri) {
                 vscode.window.showErrorMessage('Please select a file or folder to extract context from');
                 return;
             }
-
+    
             const stats = await fs.stat(uri.fsPath);
-
+    
             // Handle folder case
             if (stats.isDirectory()) {
                 const folderPath = uri.fsPath;
@@ -21,24 +21,24 @@ export function activate(context: vscode.ExtensionContext) {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const outputFileName = `${folderName}_${timestamp}.txt`;
                 const outputPath = path.join(folderPath, outputFileName);
-
+    
                 await processFolderContent(folderPath, outputPath);
                 await showSuccessMessage(outputFileName, outputPath);
                 return;
             }
-
+    
             // Handle file case(s)
-            const selectedFiles = getSelectedFiles(uri);
+            const filesToProcess = selectedFiles || getSelectedFiles(uri);
             const folderPath = path.dirname(uri.fsPath);
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const outputFileName = selectedFiles.length > 1 ? 
+            const outputFileName = filesToProcess.length > 1 ? 
                 `selected_files_${timestamp}.txt` : 
                 `single_file_${timestamp}.txt`;
             const outputPath = path.join(folderPath, outputFileName);
-
-            await processFiles(selectedFiles, outputPath, folderPath);
+    
+            await processFiles(filesToProcess, outputPath, folderPath);
             await showSuccessMessage(outputFileName, outputPath);
-
+    
         } catch (error) {
             vscode.window.showErrorMessage(`Error extracting context: ${error}`);
         }
@@ -48,30 +48,26 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function getSelectedFiles(clickedUri: vscode.Uri): vscode.Uri[] {
-    const selectedFiles: vscode.Uri[] = [];
-    
-    // Get all selected files from the explorer
-    if (vscode.window.activeTextEditor) {
-        const selections = vscode.window.visibleTextEditors
-            .filter(editor => editor.selection)
-            .map(editor => editor.document.uri);
-        selectedFiles.push(...selections);
+    // Get all selected files from the VS Code explorer
+    const selectedUris = vscode.window.activeTextEditor?.document ? 
+        [vscode.window.activeTextEditor.document.uri] : [];
+
+    // Get the current selection from the explorer
+    const explorerSelection = vscode.window.visibleTextEditors
+        .map(editor => editor.document.uri);
+
+    // Combine all selections
+    const allUris = [...selectedUris, ...explorerSelection];
+
+    // Add the clicked file if it's not already included
+    if (!allUris.some(uri => uri.fsPath === clickedUri.fsPath)) {
+        allUris.push(clickedUri);
     }
 
-    // Get files from workspace selection
-    const workspaceSelected = vscode.workspace.textDocuments
-        .filter(doc => doc.uri.scheme === 'file' && doc.isDirty === false)
-        .map(doc => doc.uri);
-    selectedFiles.push(...workspaceSelected);
-
-    // Always include the file that was right-clicked
-    if (!selectedFiles.some(uri => uri.fsPath === clickedUri.fsPath)) {
-        selectedFiles.push(clickedUri);
-    }
-
-    // Remove duplicates
-    return Array.from(new Set(selectedFiles.map(uri => uri.fsPath)))
-        .map(fsPath => vscode.Uri.file(fsPath));
+    // Remove duplicates and filter out non-file URIs
+    return Array.from(new Set(allUris))
+        .filter(uri => uri.scheme === 'file')
+        .map(uri => vscode.Uri.file(uri.fsPath));
 }
 
 async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: string): Promise<void> {
