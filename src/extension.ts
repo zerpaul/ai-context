@@ -48,16 +48,30 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function getSelectedFiles(clickedUri: vscode.Uri): vscode.Uri[] {
-    const selectedFiles = vscode.window.activeTextEditor ? 
-        [vscode.window.activeTextEditor.document.uri] : 
-        [];
+    const selectedFiles: vscode.Uri[] = [];
+    
+    // Get all selected files from the explorer
+    if (vscode.window.activeTextEditor) {
+        const selections = vscode.window.visibleTextEditors
+            .filter(editor => editor.selection)
+            .map(editor => editor.document.uri);
+        selectedFiles.push(...selections);
+    }
+
+    // Get files from workspace selection
+    const workspaceSelected = vscode.workspace.textDocuments
+        .filter(doc => doc.uri.scheme === 'file' && doc.isDirty === false)
+        .map(doc => doc.uri);
+    selectedFiles.push(...workspaceSelected);
 
     // Always include the file that was right-clicked
     if (!selectedFiles.some(uri => uri.fsPath === clickedUri.fsPath)) {
         selectedFiles.push(clickedUri);
     }
 
-    return selectedFiles;
+    // Remove duplicates
+    return Array.from(new Set(selectedFiles.map(uri => uri.fsPath)))
+        .map(fsPath => vscode.Uri.file(fsPath));
 }
 
 async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: string): Promise<void> {
