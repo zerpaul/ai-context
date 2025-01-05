@@ -17,7 +17,7 @@ A VSCode extension that generates AI-readable context from your folders and file
 
 ## Release Notes
 
-### 0.0.7
+### 0.0.9
 - **New setting**: `aicontext.createTxtFileByDefault`
   - When enabled (`true`), `.txt` files are created by default for folder/file extracts  
   - When disabled (`false`, default), only the clipboard is updated

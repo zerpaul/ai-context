@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.0.7] - 2025-01-05
+## [0.0.9] - 2025-01-05
 
 ### Added
 - **New user setting**: `aicontext.createTxtFileByDefault`
