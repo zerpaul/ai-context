@@ -137,6 +137,7 @@ async function processFiles(files, outputPath, rootPath) {
             }
         }
         await fs.writeFile(outputPath, output, 'utf8');
+        await vscode.env.clipboard.writeText(output);
     });
 }
 async function processFolderContent(folderPath, outputPath) {
@@ -192,6 +193,7 @@ async function processFolderContent(folderPath, outputPath) {
             }
         }
         await fs.writeFile(outputPath, output, 'utf8');
+        await vscode.env.clipboard.writeText(output);
     });
 }
 async function showSuccessMessage(outputFileName, outputPath) {

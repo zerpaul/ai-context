@@ -112,6 +112,7 @@ async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: s
         }
 
         await fs.writeFile(outputPath, output, 'utf8');
+        await vscode.env.clipboard.writeText(output);
     });
 }
 
@@ -178,6 +179,7 @@ async function processFolderContent(folderPath: string, outputPath: string): Pro
         }
 
         await fs.writeFile(outputPath, output, 'utf8');
+        await vscode.env.clipboard.writeText(output);
     });
 }
 
