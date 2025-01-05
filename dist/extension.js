@@ -52,6 +52,9 @@ function activate(context) {
                 vscode.window.showErrorMessage('Please select a file or folder to extract context from');
                 return;
             }
+            // Read user setting for whether or not to create a .txt file
+            const config = vscode.workspace.getConfiguration('aicontext');
+            const createTxtByDefault = config.get('createTxtFileByDefault') === true;
             const stats = await fs.stat(uri.fsPath);
             // Handle folder case
             if (stats.isDirectory()) {
@@ -60,20 +63,30 @@ function activate(context) {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const outputFileName = `${folderName}_${timestamp}.txt`;
                 const outputPath = path.join(folderPath, outputFileName);
-                await processFolderContent(folderPath, outputPath);
-                await showSuccessMessage(outputFileName, outputPath);
+                await processFolderContent(folderPath, outputPath, createTxtByDefault);
+                if (createTxtByDefault) {
+                    await showFileCreationMessage(outputFileName, outputPath);
+                }
+                else {
+                    await showClipboardOnlyMessage();
+                }
                 return;
             }
             // Handle file case(s)
             const filesToProcess = selectedFiles || getSelectedFiles(uri);
             const folderPath = path.dirname(uri.fsPath);
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const outputFileName = filesToProcess.length > 1 ?
-                `selected_files_${timestamp}.txt` :
-                `single_file_${timestamp}.txt`;
+            const outputFileName = filesToProcess.length > 1
+                ? `selected_files_${timestamp}.txt`
+                : `single_file_${timestamp}.txt`;
             const outputPath = path.join(folderPath, outputFileName);
-            await processFiles(filesToProcess, outputPath, folderPath);
-            await showSuccessMessage(outputFileName, outputPath);
+            await processFiles(filesToProcess, outputPath, folderPath, createTxtByDefault);
+            if (createTxtByDefault) {
+                await showFileCreationMessage(outputFileName, outputPath);
+            }
+            else {
+                await showClipboardOnlyMessage();
+            }
         }
         catch (error) {
             vscode.window.showErrorMessage(`Error extracting context: ${error}`);
@@ -83,8 +96,9 @@ function activate(context) {
 }
 function getSelectedFiles(clickedUri) {
     // Get all selected files from the VS Code explorer
-    const selectedUris = vscode.window.activeTextEditor?.document ?
-        [vscode.window.activeTextEditor.document.uri] : [];
+    const selectedUris = vscode.window.activeTextEditor?.document
+        ? [vscode.window.activeTextEditor.document.uri]
+        : [];
     // Get the current selection from the explorer
     const explorerSelection = vscode.window.visibleTextEditors
         .map(editor => editor.document.uri);
@@ -99,7 +113,7 @@ function getSelectedFiles(clickedUri) {
         .filter(uri => uri.scheme === 'file')
         .map(uri => vscode.Uri.file(uri.fsPath));
 }
-async function processFiles(files, outputPath, rootPath) {
+async function processFiles(files, outputPath, rootPath, createTxtByDefault) {
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Extracting file context...",
@@ -136,11 +150,15 @@ async function processFiles(files, outputPath, rootPath) {
                 output += `Error reading file ${file.fsPath}: ${error}\n\n`;
             }
         }
-        await fs.writeFile(outputPath, output, 'utf8');
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
         await vscode.env.clipboard.writeText(output);
     });
 }
-async function processFolderContent(folderPath, outputPath) {
+async function processFolderContent(folderPath, outputPath, createTxtByDefault) {
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Extracting folder context...",
@@ -192,16 +210,23 @@ async function processFolderContent(folderPath, outputPath) {
                 output += `Error reading file ${file}: ${error}\n\n`;
             }
         }
-        await fs.writeFile(outputPath, output, 'utf8');
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
         await vscode.env.clipboard.writeText(output);
     });
 }
-async function showSuccessMessage(outputFileName, outputPath) {
-    const action = await vscode.window.showInformationMessage(`Successfully extracted context to ${outputFileName}`, 'Open File');
+async function showFileCreationMessage(outputFileName, outputPath) {
+    const action = await vscode.window.showInformationMessage(`Successfully extracted context to ${outputFileName} (and copied to clipboard).`, 'Open File');
     if (action === 'Open File') {
         const doc = await vscode.workspace.openTextDocument(outputPath);
         await vscode.window.showTextDocument(doc);
     }
+}
+async function showClipboardOnlyMessage() {
+    await vscode.window.showInformationMessage('Context copied to clipboard (no .txt file created).');
 }
 async function getAllFiles(dirPath) {
     const files = [];

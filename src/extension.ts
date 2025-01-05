@@ -11,9 +11,13 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showErrorMessage('Please select a file or folder to extract context from');
                 return;
             }
-    
+
+            // Read user setting for whether or not to create a .txt file
+            const config = vscode.workspace.getConfiguration('aicontext');
+            const createTxtByDefault = config.get<boolean>('createTxtFileByDefault') === true;
+
             const stats = await fs.stat(uri.fsPath);
-    
+
             // Handle folder case
             if (stats.isDirectory()) {
                 const folderPath = uri.fsPath;
@@ -21,24 +25,32 @@ export function activate(context: vscode.ExtensionContext) {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const outputFileName = `${folderName}_${timestamp}.txt`;
                 const outputPath = path.join(folderPath, outputFileName);
-    
-                await processFolderContent(folderPath, outputPath);
-                await showSuccessMessage(outputFileName, outputPath);
+
+                await processFolderContent(folderPath, outputPath, createTxtByDefault);
+                if (createTxtByDefault) {
+                    await showFileCreationMessage(outputFileName, outputPath);
+                } else {
+                    await showClipboardOnlyMessage();
+                }
                 return;
             }
-    
+
             // Handle file case(s)
             const filesToProcess = selectedFiles || getSelectedFiles(uri);
             const folderPath = path.dirname(uri.fsPath);
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const outputFileName = filesToProcess.length > 1 ? 
-                `selected_files_${timestamp}.txt` : 
-                `single_file_${timestamp}.txt`;
+            const outputFileName = filesToProcess.length > 1
+                ? `selected_files_${timestamp}.txt`
+                : `single_file_${timestamp}.txt`;
             const outputPath = path.join(folderPath, outputFileName);
-    
-            await processFiles(filesToProcess, outputPath, folderPath);
-            await showSuccessMessage(outputFileName, outputPath);
-    
+
+            await processFiles(filesToProcess, outputPath, folderPath, createTxtByDefault);
+            if (createTxtByDefault) {
+                await showFileCreationMessage(outputFileName, outputPath);
+            } else {
+                await showClipboardOnlyMessage();
+            }
+
         } catch (error) {
             vscode.window.showErrorMessage(`Error extracting context: ${error}`);
         }
@@ -49,8 +61,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 function getSelectedFiles(clickedUri: vscode.Uri): vscode.Uri[] {
     // Get all selected files from the VS Code explorer
-    const selectedUris = vscode.window.activeTextEditor?.document ? 
-        [vscode.window.activeTextEditor.document.uri] : [];
+    const selectedUris = vscode.window.activeTextEditor?.document
+        ? [vscode.window.activeTextEditor.document.uri]
+        : [];
 
     // Get the current selection from the explorer
     const explorerSelection = vscode.window.visibleTextEditors
@@ -70,7 +83,12 @@ function getSelectedFiles(clickedUri: vscode.Uri): vscode.Uri[] {
         .map(uri => vscode.Uri.file(uri.fsPath));
 }
 
-async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: string): Promise<void> {
+async function processFiles(
+    files: vscode.Uri[],
+    outputPath: string,
+    rootPath: string,
+    createTxtByDefault: boolean
+): Promise<void> {
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Extracting file context...",
@@ -111,12 +129,16 @@ async function processFiles(files: vscode.Uri[], outputPath: string, rootPath: s
             }
         }
 
-        await fs.writeFile(outputPath, output, 'utf8');
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
         await vscode.env.clipboard.writeText(output);
     });
 }
 
-async function processFolderContent(folderPath: string, outputPath: string): Promise<void> {
+async function processFolderContent(folderPath: string, outputPath: string, createTxtByDefault: boolean): Promise<void> {
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Extracting folder context...",
@@ -133,11 +155,11 @@ async function processFolderContent(folderPath: string, outputPath: string): Pro
 
         output += 'DIRECTORY STRUCTURE\n==================\n';
         const structure = new Map<string, string[]>();
-        
+
         files.forEach(file => {
             const relPath = path.relative(folderPath, path.dirname(file));
             const fileName = path.basename(file);
-            
+
             if (!structure.has(relPath)) {
                 structure.set(relPath, []);
             }
@@ -155,7 +177,7 @@ async function processFolderContent(folderPath: string, outputPath: string): Pro
         progress.report({ message: "Reading file contents..." });
 
         output += 'FILE CONTENTS\n=============\n\n';
-        
+
         let processedFiles = 0;
         for (const file of files) {
             try {
@@ -178,14 +200,18 @@ async function processFolderContent(folderPath: string, outputPath: string): Pro
             }
         }
 
-        await fs.writeFile(outputPath, output, 'utf8');
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
         await vscode.env.clipboard.writeText(output);
     });
 }
 
-async function showSuccessMessage(outputFileName: string, outputPath: string): Promise<void> {
+async function showFileCreationMessage(outputFileName: string, outputPath: string): Promise<void> {
     const action = await vscode.window.showInformationMessage(
-        `Successfully extracted context to ${outputFileName}`,
+        `Successfully extracted context to ${outputFileName} (and copied to clipboard).`,
         'Open File'
     );
 
@@ -195,15 +221,21 @@ async function showSuccessMessage(outputFileName: string, outputPath: string): P
     }
 }
 
+async function showClipboardOnlyMessage(): Promise<void> {
+    await vscode.window.showInformationMessage(
+        'Context copied to clipboard (no .txt file created).'
+    );
+}
+
 async function getAllFiles(dirPath: string): Promise<string[]> {
     const files: string[] = [];
-    
+
     async function traverse(currentPath: string) {
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
-        
+
         for (const entry of entries) {
             const fullPath = path.join(currentPath, entry.name);
-            
+
             // Skip node_modules and .git directories
             if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
                 await traverse(fullPath);

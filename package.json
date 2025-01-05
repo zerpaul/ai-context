@@ -4,7 +4,7 @@
   "description": "Formats all file content and the directory structure within a folder in an AI readable format",
   "version": "0.0.6",
   "icon": "icon.png",
-  "publisher": "paulzer-ai-context", 
+  "publisher": "paulzer-ai-context",
   "repository": {
     "type": "git",
     "url": "https://github.com/zerpaul/ai-context"
@@ -20,22 +20,33 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-      "commands": [
-          {
-              "command": "aicontext.extractFolder",
-              "title": "Extract AI Context",
-              "when": "explorerViewletVisible"
-          }
-      ],
-      "menus": {
-          "explorer/context": [
-              {
-                  "command": "aicontext.extractFolder",
-                  "group": "aiContext",
-                  "when": "explorerViewletVisible && (explorerResourceIsFolder || resourceLangId)"
-              }
-          ]
+    "commands": [
+      {
+        "command": "aicontext.extractFolder",
+        "title": "Extract AI Context",
+        "when": "explorerViewletVisible"
       }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "aicontext.extractFolder",
+          "group": "aiContext",
+          "when": "explorerViewletVisible && (explorerResourceIsFolder || resourceLangId)"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "AI Context",
+      "properties": {
+        "aicontext.createTxtFileByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create a .txt file by default when extracting folder or file context. If false, only the clipboard is updated."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
