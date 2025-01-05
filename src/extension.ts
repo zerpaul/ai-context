@@ -211,7 +211,7 @@ async function processFolderContent(folderPath: string, outputPath: string, crea
 
 async function showFileCreationMessage(outputFileName: string, outputPath: string): Promise<void> {
     const action = await vscode.window.showInformationMessage(
-        `Successfully extracted context to ${outputFileName} (and copied to clipboard).`,
+        `Successfully extracted context to ${outputFileName} (and copied to clipboard)`,
         'Open File'
     );
 
@@ -223,7 +223,7 @@ async function showFileCreationMessage(outputFileName: string, outputPath: strin
 
 async function showClipboardOnlyMessage(): Promise<void> {
     await vscode.window.showInformationMessage(
-        'Context copied to clipboard (no .txt file created).'
+        'Context copied to clipboard'
     );
 }
 
