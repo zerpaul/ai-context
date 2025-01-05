@@ -5,6 +5,15 @@ All notable changes to the "aicontext" extension will be documented in this file
 The format is based on [Keep a Changelog](http://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.0.7] - 2025-01-05
+
+### Added
+- **New user setting**: `aicontext.createTxtFileByDefault`
+  - If `true`, a `.txt` file is always generated when extracting context
+  - If `false`, no `.txt` file is generated; content is only copied to clipboard (default)
+- Updated documentation (README) to explain new setting
+
 ## [0.0.3] - 2024-12-29
 
 ### Added
