@@ -3,9 +3,12 @@ A VSCode extension that generates AI-readable context from your folders and file
 
 ## Features
 - 📁 Extract complete folder structure and contents with a single click
+- 📂 **Extract multiple folders** by ctrl-clicking them in the explorer
 - 📄 Extract single files or multiple selected files
+- 🔄 **Combine files and folders** in a single extraction when ctrl-clicking both
 - ✂️ **Optionally skip .txt file creation** and just copy extracted content to the clipboard (see settings below)
 - 🔍 **Filter unwanted content** by ignoring specific file extensions, folders, or files
+- 📊 **Optimized output format** with directory structures always at the top for easy navigation
 
 ## Extension Settings
 - **`aicontext.createTxtFileByDefault`**  
@@ -31,6 +34,13 @@ A VSCode extension that generates AI-readable context from your folders and file
   - Example: `["package.json", "package-lock.json", ".env"]` will ignore package files and environment variables.
 
 ## Usage
-1. Right-click on a folder or file in the Explorer (or ctrl-click many specific files)
-2. Select "Extract AI Context"
-3. The context will be copied to your clipboard (and optionally saved as a .txt file)
+1. Right-click on a folder or file in the Explorer
+2. Or ctrl-click to select multiple items (can be any combination of files and folders)
+3. Select "Extract AI Context"
+4. The context will be copied to your clipboard (and optionally saved as a .txt file)
+
+## Output Structure
+- For any extraction, directory structures are always displayed at the top
+- File contents follow after all directory structures
+- For multiple folders, each folder's structure is shown separately
+- When extracting mixed content (folders and files), all structures are grouped together, followed by all contents

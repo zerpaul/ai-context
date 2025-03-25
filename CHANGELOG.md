@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to the "aicontext" extension will be documented in this file.
 
+## [0.2.0] - 2025-03-25
+### Added
+- **Support for multiple folder extraction** using Ctrl+Click
+- **Mixed content extraction** for any combination of files and folders
+- **Optimized output structure** with directory structures always displayed before file contents
+- New output formats for different extraction types:
+  - `multiple_folders_timestamp.txt` for multiple folders
+  - `mixed_content_timestamp.txt` for mixed folder and file selections
+### Changed
+- Improved progress reporting for multiple folder extraction
+- Enhanced output organization for better readability
+- Restructured code to support various selection combinations
 
 ## [0.1.0] - 2025-03-25
 ### Added
