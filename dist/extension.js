@@ -1,1 +1,354 @@
-(()=>{"use strict";var t={265:function(t,e,n){var o,a=this&&this.__createBinding||(Object.create?function(t,e,n,o){void 0===o&&(o=n);var a=Object.getOwnPropertyDescriptor(e,n);a&&!("get"in a?!e.__esModule:a.writable||a.configurable)||(a={enumerable:!0,get:function(){return e[n]}}),Object.defineProperty(t,o,a)}:function(t,e,n,o){void 0===o&&(o=n),t[o]=e[n]}),i=this&&this.__setModuleDefault||(Object.create?function(t,e){Object.defineProperty(t,"default",{enumerable:!0,value:e})}:function(t,e){t.default=e}),r=this&&this.__importStar||(o=function(t){return o=Object.getOwnPropertyNames||function(t){var e=[];for(var n in t)Object.prototype.hasOwnProperty.call(t,n)&&(e[e.length]=n);return e},o(t)},function(t){if(t&&t.__esModule)return t;var e={};if(null!=t)for(var n=o(t),r=0;r<n.length;r++)"default"!==n[r]&&a(e,t,n[r]);return i(e,t),e});Object.defineProperty(e,"__esModule",{value:!0}),e.activate=function(t){console.log("AI Context Extractor is now active");const e=s.commands.registerCommand("aicontext.extractFolder",(async(t,e)=>{try{if(!t)return void s.window.showErrorMessage("Please select a file or folder to extract context from");const n=!0===s.workspace.getConfiguration("aicontext").get("createTxtFileByDefault");if((await l.stat(t.fsPath)).isDirectory()){const e=t.fsPath,o=`${c.basename(e)}_${(new Date).toISOString().replace(/[:.]/g,"-")}.txt`,a=c.join(e,o);return await async function(t,e,n){await s.window.withProgress({location:s.ProgressLocation.Notification,title:"Extracting folder context...",cancellable:!0},(async o=>{let a="PROJECT METADATA\n===============\n";a+=`Project Root: ${t}\n`,a+=`Scan Date: ${(new Date).toISOString()}\n`;const i=await async function(t){const e=[];return await async function t(n){const o=await l.readdir(n,{withFileTypes:!0});for(const a of o){const o=c.join(n,a.name);a.isDirectory()&&!a.name.startsWith(".")&&"node_modules"!==a.name?await t(o):a.isFile()&&e.push(o)}}(t),e}(t);a+=`Total Files: ${i.length}\n\n`,o.report({message:"Building directory structure..."}),a+="DIRECTORY STRUCTURE\n==================\n";const r=new Map;i.forEach((e=>{const n=c.relative(t,c.dirname(e)),o=c.basename(e);r.has(n)||r.set(n,[]),r.get(n)?.push(o)}));for(const[t,e]of r)a+=t?`/${t}/\n`:"/\n",e.forEach((t=>{a+=`  └── ${t}\n`}));a+="\n",o.report({message:"Reading file contents..."}),a+="FILE CONTENTS\n=============\n\n";let f=0;for(const e of i)try{const n=await l.readFile(e,"utf8"),r="=".repeat(80);a+=`${r}\n`,a+=`Absolute Path: ${e}\n`,a+=`Relative Path: ${c.relative(t,e)}\n`,a+=`${r}\n\n`,a+=n,a+="\n\n",f++,o.report({message:`Processing files... (${f}/${i.length})`,increment:100/i.length})}catch(t){a+=`Error reading file ${e}: ${t}\n\n`}n&&await l.writeFile(e,a,"utf8"),await s.env.clipboard.writeText(a)}))}(e,a,n),void(n?await f(o,a):await u())}const o=e||function(t){const e=[...s.window.activeTextEditor?.document?[s.window.activeTextEditor.document.uri]:[],...s.window.visibleTextEditors.map((t=>t.document.uri))];return e.some((e=>e.fsPath===t.fsPath))||e.push(t),Array.from(new Set(e)).filter((t=>"file"===t.scheme)).map((t=>s.Uri.file(t.fsPath)))}(t),a=c.dirname(t.fsPath),i=(new Date).toISOString().replace(/[:.]/g,"-"),r=o.length>1?`selected_files_${i}.txt`:`single_file_${i}.txt`,w=c.join(a,r);await async function(t,e,n,o){await s.window.withProgress({location:s.ProgressLocation.Notification,title:"Extracting file context...",cancellable:!0},(async a=>{let i="FILE EXTRACTION\n===============\n";i+=`Root Path: ${n}\n`,i+=`Scan Date: ${(new Date).toISOString()}\n`,i+=`Total Files: ${t.length}\n\n`,i+="SELECTED FILES\n==============\n",t.forEach((t=>{i+=`${c.relative(n,t.fsPath)}\n`})),i+="\n",i+="FILE CONTENTS\n=============\n\n";let r=0;for(const e of t)try{const o=await l.readFile(e.fsPath,"utf8"),s="=".repeat(80);i+=`${s}\n`,i+=`Absolute Path: ${e.fsPath}\n`,i+=`Relative Path: ${c.relative(n,e.fsPath)}\n`,i+=`${s}\n\n`,i+=o,i+="\n\n",r++,a.report({message:`Processing files... (${r}/${t.length})`,increment:100/t.length})}catch(t){i+=`Error reading file ${e.fsPath}: ${t}\n\n`}o&&await l.writeFile(e,i,"utf8"),await s.env.clipboard.writeText(i)}))}(o,w,a,n),n?await f(r,w):await u()}catch(t){s.window.showErrorMessage(`Error extracting context: ${t}`)}}));t.subscriptions.push(e)},e.deactivate=function(){};const s=r(n(398)),c=r(n(928)),l=r(n(943));async function f(t,e){if("Open File"===await s.window.showInformationMessage(`Successfully extracted context to ${t} (and copied to clipboard)`,"Open File")){const t=await s.workspace.openTextDocument(e);await s.window.showTextDocument(t)}}async function u(){await s.window.showInformationMessage("Context copied to clipboard")}},398:t=>{t.exports=require("vscode")},943:t=>{t.exports=require("fs/promises")},928:t=>{t.exports=require("path")}},e={},n=function n(o){var a=e[o];if(void 0!==a)return a.exports;var i=e[o]={exports:{}};return t[o].call(i.exports,i,i.exports,n),i.exports}(265);module.exports=n})();
+/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ([
+/* 0 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.activate = activate;
+exports.deactivate = deactivate;
+const vscode = __importStar(__webpack_require__(1));
+const path = __importStar(__webpack_require__(2));
+const fs = __importStar(__webpack_require__(3));
+function activate(context) {
+    console.log('AI Context Extractor is now active');
+    const disposable = vscode.commands.registerCommand('aicontext.extractFolder', async (uri, selectedFiles) => {
+        try {
+            if (!uri) {
+                vscode.window.showErrorMessage('Please select a file or folder to extract context from');
+                return;
+            }
+            // Read user setting for whether or not to create a .txt file
+            const config = vscode.workspace.getConfiguration('aicontext');
+            const createTxtByDefault = config.get('createTxtFileByDefault') === true;
+            const stats = await fs.stat(uri.fsPath);
+            // Handle folder case
+            if (stats.isDirectory()) {
+                const folderPath = uri.fsPath;
+                const folderName = path.basename(folderPath);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const outputFileName = `${folderName}_${timestamp}.txt`;
+                const outputPath = path.join(folderPath, outputFileName);
+                await processFolderContent(folderPath, outputPath, createTxtByDefault);
+                if (createTxtByDefault) {
+                    await showFileCreationMessage(outputFileName, outputPath);
+                }
+                else {
+                    await showClipboardOnlyMessage();
+                }
+                return;
+            }
+            // Handle file case(s)
+            const filesToProcess = selectedFiles || getSelectedFiles(uri);
+            const folderPath = path.dirname(uri.fsPath);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const outputFileName = filesToProcess.length > 1
+                ? `selected_files_${timestamp}.txt`
+                : `single_file_${timestamp}.txt`;
+            const outputPath = path.join(folderPath, outputFileName);
+            await processFiles(filesToProcess, outputPath, folderPath, createTxtByDefault);
+            if (createTxtByDefault) {
+                await showFileCreationMessage(outputFileName, outputPath);
+            }
+            else {
+                await showClipboardOnlyMessage();
+            }
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Error extracting context: ${error}`);
+        }
+    });
+    context.subscriptions.push(disposable);
+}
+function getSelectedFiles(clickedUri) {
+    // Get all selected files from the VS Code explorer
+    const selectedUris = vscode.window.activeTextEditor?.document
+        ? [vscode.window.activeTextEditor.document.uri]
+        : [];
+    // Get the current selection from the explorer
+    const explorerSelection = vscode.window.visibleTextEditors
+        .map(editor => editor.document.uri);
+    // Combine all selections
+    const allUris = [...selectedUris, ...explorerSelection];
+    // Add the clicked file if it's not already included
+    if (!allUris.some(uri => uri.fsPath === clickedUri.fsPath)) {
+        allUris.push(clickedUri);
+    }
+    // Remove duplicates and filter out non-file URIs
+    return Array.from(new Set(allUris))
+        .filter(uri => uri.scheme === 'file')
+        .map(uri => vscode.Uri.file(uri.fsPath));
+}
+async function processFiles(files, outputPath, rootPath, createTxtByDefault) {
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Extracting file context...",
+        cancellable: true
+    }, async (progress) => {
+        // Get configuration settings
+        const config = vscode.workspace.getConfiguration('aicontext');
+        const ignoreFileExtensions = config.get('ignoreFileExtensions') || [];
+        const ignoreFolderPaths = config.get('ignoreFolderPaths') || [];
+        const ignoreFiles = config.get('ignoreFiles') || [];
+        // Filter files based on ignore settings
+        const filteredFiles = files.filter(file => {
+            const filePath = file.fsPath;
+            const relativePath = path.relative(rootPath, filePath);
+            const fileName = path.basename(filePath);
+            const fileExt = path.extname(fileName);
+            // Skip files with extensions in ignoreFileExtensions
+            if (ignoreFileExtensions.includes(fileExt)) {
+                return false;
+            }
+            // Skip files that match any of the ignoreFiles
+            if (ignoreFiles.some(ignoreFile => fileName === ignoreFile)) {
+                return false;
+            }
+            // Skip files in folders that match any of the ignoreFolderPaths
+            if (ignoreFolderPaths.some(folderPath => relativePath.includes(folderPath))) {
+                return false;
+            }
+            return true;
+        });
+        let output = 'FILE EXTRACTION\n===============\n';
+        output += `Root Path: ${rootPath}\n`;
+        output += `Scan Date: ${new Date().toISOString()}\n`;
+        output += `Total Files: ${filteredFiles.length}\n\n`;
+        output += 'SELECTED FILES\n==============\n';
+        filteredFiles.forEach(file => {
+            output += `${path.relative(rootPath, file.fsPath)}\n`;
+        });
+        output += '\n';
+        output += 'FILE CONTENTS\n=============\n\n';
+        let processedFiles = 0;
+        for (const file of filteredFiles) {
+            try {
+                const content = await fs.readFile(file.fsPath, 'utf8');
+                const separator = '='.repeat(80);
+                output += `${separator}\n`;
+                output += `Absolute Path: ${file.fsPath}\n`;
+                output += `Relative Path: ${path.relative(rootPath, file.fsPath)}\n`;
+                output += `${separator}\n\n`;
+                output += content;
+                output += '\n\n';
+                processedFiles++;
+                progress.report({
+                    message: `Processing files... (${processedFiles}/${filteredFiles.length})`,
+                    increment: (100 / filteredFiles.length)
+                });
+            }
+            catch (error) {
+                output += `Error reading file ${file.fsPath}: ${error}\n\n`;
+            }
+        }
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
+        await vscode.env.clipboard.writeText(output);
+    });
+}
+async function processFolderContent(folderPath, outputPath, createTxtByDefault) {
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Extracting folder context...",
+        cancellable: true
+    }, async (progress) => {
+        let output = 'PROJECT METADATA\n===============\n';
+        output += `Project Root: ${folderPath}\n`;
+        output += `Scan Date: ${new Date().toISOString()}\n`;
+        const files = await getAllFiles(folderPath);
+        output += `Total Files: ${files.length}\n\n`;
+        progress.report({ message: "Building directory structure..." });
+        output += 'DIRECTORY STRUCTURE\n==================\n';
+        const structure = new Map();
+        files.forEach(file => {
+            const relPath = path.relative(folderPath, path.dirname(file));
+            const fileName = path.basename(file);
+            if (!structure.has(relPath)) {
+                structure.set(relPath, []);
+            }
+            structure.get(relPath)?.push(fileName);
+        });
+        for (const [dir, fileList] of structure) {
+            output += dir ? `/${dir}/\n` : '/\n';
+            fileList.forEach(file => {
+                output += `  └── ${file}\n`;
+            });
+        }
+        output += '\n';
+        progress.report({ message: "Reading file contents..." });
+        output += 'FILE CONTENTS\n=============\n\n';
+        let processedFiles = 0;
+        for (const file of files) {
+            try {
+                const content = await fs.readFile(file, 'utf8');
+                const separator = '='.repeat(80);
+                output += `${separator}\n`;
+                output += `Absolute Path: ${file}\n`;
+                output += `Relative Path: ${path.relative(folderPath, file)}\n`;
+                output += `${separator}\n\n`;
+                output += content;
+                output += '\n\n';
+                processedFiles++;
+                progress.report({
+                    message: `Processing files... (${processedFiles}/${files.length})`,
+                    increment: (100 / files.length)
+                });
+            }
+            catch (error) {
+                output += `Error reading file ${file}: ${error}\n\n`;
+            }
+        }
+        // Write to file only if user setting is enabled
+        if (createTxtByDefault) {
+            await fs.writeFile(outputPath, output, 'utf8');
+        }
+        // Always copy to clipboard
+        await vscode.env.clipboard.writeText(output);
+    });
+}
+async function showFileCreationMessage(outputFileName, outputPath) {
+    const action = await vscode.window.showInformationMessage(`Successfully extracted context to ${outputFileName} (and copied to clipboard)`, 'Open File');
+    if (action === 'Open File') {
+        const doc = await vscode.workspace.openTextDocument(outputPath);
+        await vscode.window.showTextDocument(doc);
+    }
+}
+async function showClipboardOnlyMessage() {
+    await vscode.window.showInformationMessage('Context copied to clipboard');
+}
+async function getAllFiles(dirPath) {
+    const files = [];
+    // Get configuration settings
+    const config = vscode.workspace.getConfiguration('aicontext');
+    const ignoreFileExtensions = config.get('ignoreFileExtensions') || [];
+    const ignoreFolderPaths = config.get('ignoreFolderPaths') || [];
+    const ignoreFiles = config.get('ignoreFiles') || [];
+    async function traverse(currentPath) {
+        const entries = await fs.readdir(currentPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(currentPath, entry.name);
+            const relativePath = path.relative(dirPath, fullPath);
+            if (entry.isDirectory()) {
+                // Skip hidden directories by default
+                if (entry.name.startsWith('.')) {
+                    continue;
+                }
+                // Skip directories that match any of the ignoreFolderPaths
+                const shouldSkip = ignoreFolderPaths.some(folderPath => relativePath.includes(folderPath));
+                if (!shouldSkip) {
+                    await traverse(fullPath);
+                }
+            }
+            else if (entry.isFile()) {
+                // Skip files that match any of the ignoreFiles
+                if (ignoreFiles.some(file => entry.name === file)) {
+                    continue;
+                }
+                // Skip files with extensions in ignoreFileExtensions
+                const fileExt = path.extname(entry.name);
+                if (ignoreFileExtensions.includes(fileExt)) {
+                    continue;
+                }
+                files.push(fullPath);
+            }
+        }
+    }
+    await traverse(dirPath);
+    return files;
+}
+function deactivate() { }
+
+
+/***/ }),
+/* 1 */
+/***/ ((module) => {
+
+module.exports = require("vscode");
+
+/***/ }),
+/* 2 */
+/***/ ((module) => {
+
+module.exports = require("path");
+
+/***/ }),
+/* 3 */
+/***/ ((module) => {
+
+module.exports = require("fs/promises");
+
+/***/ })
+/******/ 	]);
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__(0);
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
+/******/ })()
+;
+//# sourceMappingURL=extension.js.map

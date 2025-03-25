@@ -94,13 +94,44 @@ async function processFiles(
         title: "Extracting file context...",
         cancellable: true
     }, async (progress) => {
+        // Get configuration settings
+        const config = vscode.workspace.getConfiguration('aicontext');
+        const ignoreFileExtensions = config.get<string[]>('ignoreFileExtensions') || [];
+        const ignoreFolderPaths = config.get<string[]>('ignoreFolderPaths') || [];
+        const ignoreFiles = config.get<string[]>('ignoreFiles') || [];
+        
+        // Filter files based on ignore settings
+        const filteredFiles = files.filter(file => {
+            const filePath = file.fsPath;
+            const relativePath = path.relative(rootPath, filePath);
+            const fileName = path.basename(filePath);
+            const fileExt = path.extname(fileName);
+            
+            // Skip files with extensions in ignoreFileExtensions
+            if (ignoreFileExtensions.includes(fileExt)) {
+                return false;
+            }
+            
+            // Skip files that match any of the ignoreFiles
+            if (ignoreFiles.some(ignoreFile => fileName === ignoreFile)) {
+                return false;
+            }
+            
+            // Skip files in folders that match any of the ignoreFolderPaths
+            if (ignoreFolderPaths.some(folderPath => relativePath.includes(folderPath))) {
+                return false;
+            }
+            
+            return true;
+        });
+        
         let output = 'FILE EXTRACTION\n===============\n';
         output += `Root Path: ${rootPath}\n`;
         output += `Scan Date: ${new Date().toISOString()}\n`;
-        output += `Total Files: ${files.length}\n\n`;
+        output += `Total Files: ${filteredFiles.length}\n\n`;
 
         output += 'SELECTED FILES\n==============\n';
-        files.forEach(file => {
+        filteredFiles.forEach(file => {
             output += `${path.relative(rootPath, file.fsPath)}\n`;
         });
         output += '\n';
@@ -108,7 +139,7 @@ async function processFiles(
         output += 'FILE CONTENTS\n=============\n\n';
 
         let processedFiles = 0;
-        for (const file of files) {
+        for (const file of filteredFiles) {
             try {
                 const content = await fs.readFile(file.fsPath, 'utf8');
                 const separator = '='.repeat(80);
@@ -121,8 +152,8 @@ async function processFiles(
 
                 processedFiles++;
                 progress.report({
-                    message: `Processing files... (${processedFiles}/${files.length})`,
-                    increment: (100 / files.length)
+                    message: `Processing files... (${processedFiles}/${filteredFiles.length})`,
+                    increment: (100 / filteredFiles.length)
                 });
             } catch (error) {
                 output += `Error reading file ${file.fsPath}: ${error}\n\n`;
@@ -229,18 +260,46 @@ async function showClipboardOnlyMessage(): Promise<void> {
 
 async function getAllFiles(dirPath: string): Promise<string[]> {
     const files: string[] = [];
+    
+    // Get configuration settings
+    const config = vscode.workspace.getConfiguration('aicontext');
+    const ignoreFileExtensions = config.get<string[]>('ignoreFileExtensions') || [];
+    const ignoreFolderPaths = config.get<string[]>('ignoreFolderPaths') || [];
+    const ignoreFiles = config.get<string[]>('ignoreFiles') || [];
 
     async function traverse(currentPath: string) {
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
 
         for (const entry of entries) {
             const fullPath = path.join(currentPath, entry.name);
+            const relativePath = path.relative(dirPath, fullPath);
 
-            // Skip node_modules and .git directories
-            if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
-                await traverse(fullPath);
+            if (entry.isDirectory()) {
+                // Skip hidden directories by default
+                if (entry.name.startsWith('.')) {
+                    continue;
+                }
+                
+                // Skip directories that match any of the ignoreFolderPaths
+                const shouldSkip = ignoreFolderPaths.some(folderPath => 
+                    relativePath.includes(folderPath)
+                );
+                
+                if (!shouldSkip) {
+                    await traverse(fullPath);
+                }
             } else if (entry.isFile()) {
-                // You can add file extension filtering here if needed
+                // Skip files that match any of the ignoreFiles
+                if (ignoreFiles.some(file => entry.name === file)) {
+                    continue;
+                }
+                
+                // Skip files with extensions in ignoreFileExtensions
+                const fileExt = path.extname(entry.name);
+                if (ignoreFileExtensions.includes(fileExt)) {
+                    continue;
+                }
+                
                 files.push(fullPath);
             }
         }

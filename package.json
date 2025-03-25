@@ -44,6 +44,30 @@
           "type": "boolean",
           "default": false,
           "description": "Create a .txt file by default when extracting folder or file context. If false, only the clipboard is updated."
+        },
+        "aicontext.ignoreFileExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [".pyc", ".map"],
+          "description": "List of file extensions to ignore when extracting context (e.g., [\".pyc\", \".map\"])."
+        },
+        "aicontext.ignoreFolderPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["__pycache__", "node_modules", ".git"],
+          "description": "List of partial folder paths to ignore when extracting context. If the path contains any of these strings, it will be ignored."
+        },
+        "aicontext.ignoreFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "List of specific files to ignore when extracting context (e.g., [\"package.json\"])."
         }
       }
     }
