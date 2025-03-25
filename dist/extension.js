@@ -55,16 +55,47 @@ function activate(context) {
             // Read user setting for whether or not to create a .txt file
             const config = vscode.workspace.getConfiguration('aicontext');
             const createTxtByDefault = config.get('createTxtFileByDefault') === true;
+            const ignoreFolderPaths = config.get('ignoreFolderPaths') || [];
+            // Check if the selected URI itself should be ignored (this is new!)
+            const stats = await fs.stat(uri.fsPath);
+            if (stats.isDirectory()) {
+                const folderName = path.basename(uri.fsPath);
+                // Check if the folder name or path contains any of the ignore patterns
+                if (ignoreFolderPaths.some(pattern => folderName === pattern ||
+                    folderName.includes(pattern) ||
+                    uri.fsPath.includes(pattern))) {
+                    vscode.window.showInformationMessage(`Folder "${folderName}" matches an ignore pattern and was skipped.`);
+                    return;
+                }
+            }
             // Determine if we have multiple items selected
             const allItems = selectedUris || [uri];
+            // Filter out any items that match ignore patterns (this is new!)
+            const filteredItems = await Promise.all(allItems.map(async (item) => {
+                const itemStats = await fs.stat(item.fsPath);
+                const itemName = path.basename(item.fsPath);
+                if (itemStats.isDirectory() &&
+                    ignoreFolderPaths.some(pattern => itemName === pattern ||
+                        itemName.includes(pattern) ||
+                        item.fsPath.includes(pattern))) {
+                    return null; // This item should be ignored
+                }
+                return item;
+            }));
+            // Remove null entries (ignored items)
+            const validItems = filteredItems.filter(item => item !== null);
+            if (validItems.length === 0) {
+                vscode.window.showInformationMessage('All selected items match ignore patterns and were skipped.');
+                return;
+            }
             // Check if we have multiple items (files and/or folders)
-            if (allItems.length > 1) {
+            if (validItems.length > 1) {
                 // Separate folders and files
                 const folders = [];
                 const files = [];
-                for (const item of allItems) {
-                    const stats = await fs.stat(item.fsPath);
-                    if (stats.isDirectory()) {
+                for (const item of validItems) {
+                    const itemStats = await fs.stat(item.fsPath);
+                    if (itemStats.isDirectory()) {
                         folders.push(item);
                     }
                     else {
@@ -103,8 +134,7 @@ function activate(context) {
                 }
             }
             // Handle single item (file or folder)
-            const stats = await fs.stat(uri.fsPath);
-            // Handle folder case
+            // We already checked if this folder should be ignored above
             if (stats.isDirectory()) {
                 const folderPath = uri.fsPath;
                 const folderName = path.basename(folderPath);
@@ -142,6 +172,14 @@ function activate(context) {
     });
     context.subscriptions.push(disposable);
 }
+// Improved function to check if a path should be ignored based on ignoreFolderPaths
+function shouldIgnorePath(pathToCheck, ignoreFolderPaths) {
+    const normalizedPath = pathToCheck.toLowerCase(); // Case-insensitive check
+    return ignoreFolderPaths.some(pattern => {
+        const normalizedPattern = pattern.toLowerCase();
+        return normalizedPath.includes(normalizedPattern);
+    });
+}
 // New function to process multiple items (folders and files)
 async function processMultipleItems(folders, files, outputPath, rootPath, createTxtByDefault) {
     await vscode.window.withProgress({
@@ -165,18 +203,11 @@ async function processMultipleItems(folders, files, outputPath, rootPath, create
         for (const folder of folders) {
             const folderPath = folder.fsPath;
             const folderName = path.basename(folderPath);
-            // Skip folders that match any of the ignoreFolderPaths
-            const relativeFolderPath = path.relative(rootPath, folderPath);
-            const shouldSkipEntireFolder = ignoreFolderPaths.some(ignorePath => relativeFolderPath.includes(ignorePath));
-            if (shouldSkipEntireFolder) {
-                processedFolders++;
-                continue;
-            }
             progress.report({
                 message: `Processing folder ${folderName}... (${processedFolders + 1}/${folders.length})`,
                 increment: folders.length > 0 ? (40 / folders.length) : 0
             });
-            const folderFiles = await getAllFiles(folderPath);
+            const folderFiles = await getAllFiles(folderPath, ignoreFolderPaths, ignoreFileExtensions, ignoreFiles);
             // Build directory structure
             for (const file of folderFiles) {
                 const relDir = path.relative(folderPath, path.dirname(file));
@@ -196,7 +227,6 @@ async function processMultipleItems(folders, files, outputPath, rootPath, create
         // Process individual files
         const filteredFiles = files.filter(file => {
             const filePath = file.fsPath;
-            const relativePath = path.relative(rootPath, filePath);
             const fileName = path.basename(filePath);
             const fileExt = path.extname(fileName);
             // Skip files with extensions in ignoreFileExtensions
@@ -208,13 +238,7 @@ async function processMultipleItems(folders, files, outputPath, rootPath, create
                 return false;
             }
             // Skip files in folders that match any of the ignoreFolderPaths
-            // More comprehensive check for folder paths
-            if (ignoreFolderPaths.some(folderPath => {
-                const pathParts = relativePath.split(path.sep);
-                // Check if any folder in the path matches the ignore pattern
-                return pathParts.some(part => part === folderPath) ||
-                    relativePath.includes(folderPath);
-            })) {
+            if (shouldIgnorePath(filePath, ignoreFolderPaths)) {
                 return false;
             }
             return true;
@@ -316,7 +340,6 @@ async function processFiles(files, outputPath, rootPath, createTxtByDefault) {
         // Filter files based on ignore settings
         const filteredFiles = files.filter(file => {
             const filePath = file.fsPath;
-            const relativePath = path.relative(rootPath, filePath);
             const fileName = path.basename(filePath);
             const fileExt = path.extname(fileName);
             // Skip files with extensions in ignoreFileExtensions
@@ -328,13 +351,7 @@ async function processFiles(files, outputPath, rootPath, createTxtByDefault) {
                 return false;
             }
             // Skip files in folders that match any of the ignoreFolderPaths
-            // More comprehensive check for folder paths
-            if (ignoreFolderPaths.some(folderPath => {
-                const pathParts = relativePath.split(path.sep);
-                // Check if any folder in the path matches the ignore pattern
-                return pathParts.some(part => part === folderPath) ||
-                    relativePath.includes(folderPath);
-            })) {
+            if (shouldIgnorePath(filePath, ignoreFolderPaths)) {
                 return false;
             }
             return true;
@@ -402,10 +419,15 @@ async function processFolderContent(folderPath, outputPath, createTxtByDefault) 
         title: "Extracting folder context...",
         cancellable: true
     }, async (progress) => {
+        // Get configuration settings
+        const config = vscode.workspace.getConfiguration('aicontext');
+        const ignoreFileExtensions = config.get('ignoreFileExtensions') || [];
+        const ignoreFolderPaths = config.get('ignoreFolderPaths') || [];
+        const ignoreFiles = config.get('ignoreFiles') || [];
         let output = 'PROJECT METADATA\n===============\n';
         output += `Project Root: ${folderPath}\n`;
         output += `Scan Date: ${new Date().toISOString()}\n`;
-        const files = await getAllFiles(folderPath);
+        const files = await getAllFiles(folderPath, ignoreFolderPaths, ignoreFileExtensions, ignoreFiles);
         output += `Total Files: ${files.length}\n\n`;
         progress.report({ message: "Building directory structure..." });
         // Directory structure section at the top as requested
@@ -467,35 +489,23 @@ async function showFileCreationMessage(outputFileName, outputPath) {
 async function showClipboardOnlyMessage() {
     await vscode.window.showInformationMessage('Context copied to clipboard');
 }
-async function getAllFiles(dirPath) {
+async function getAllFiles(dirPath, ignoreFolderPaths, ignoreFileExtensions, ignoreFiles) {
     const files = [];
-    // Get configuration settings
-    const config = vscode.workspace.getConfiguration('aicontext');
-    const ignoreFileExtensions = config.get('ignoreFileExtensions') || [];
-    const ignoreFolderPaths = config.get('ignoreFolderPaths') || [];
-    const ignoreFiles = config.get('ignoreFiles') || [];
     async function traverse(currentPath) {
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(currentPath, entry.name);
-            const relativePath = path.relative(dirPath, fullPath);
             if (entry.isDirectory()) {
                 // Skip hidden directories by default
                 if (entry.name.startsWith('.')) {
                     continue;
                 }
-                // More strict check for folder paths to ignore
-                const shouldSkip = ignoreFolderPaths.some(folderPath => {
-                    // If the folder name itself matches exactly
-                    if (entry.name === folderPath) {
-                        return true;
-                    }
-                    // If any part of the relative path contains the ignore string
-                    return relativePath.includes(folderPath);
-                });
-                if (!shouldSkip) {
-                    await traverse(fullPath);
+                // Check if this folder should be ignored based on name or path
+                if (shouldIgnorePath(entry.name, ignoreFolderPaths) ||
+                    shouldIgnorePath(fullPath, ignoreFolderPaths)) {
+                    continue;
                 }
+                await traverse(fullPath);
             }
             else if (entry.isFile()) {
                 // Skip files that match any of the ignoreFiles
@@ -507,11 +517,11 @@ async function getAllFiles(dirPath) {
                 if (ignoreFileExtensions.includes(fileExt)) {
                     continue;
                 }
-                // Double-check if the file is in a path that should be ignored
-                const shouldSkipFile = ignoreFolderPaths.some(folderPath => relativePath.includes(folderPath));
-                if (!shouldSkipFile) {
-                    files.push(fullPath);
+                // Skip files in folders that should be ignored
+                if (shouldIgnorePath(fullPath, ignoreFolderPaths)) {
+                    continue;
                 }
+                files.push(fullPath);
             }
         }
     }
