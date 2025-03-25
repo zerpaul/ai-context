@@ -2,7 +2,7 @@
   "name": "aicontext",
   "displayName": "ai-context",
   "description": "Formats all file content and the directory structure within a folder in an AI readable format",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "icon": "icon.png",
   "publisher": "paulzer-ai-context",
   "repository": {
