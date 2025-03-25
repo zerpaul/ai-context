@@ -17,9 +17,9 @@ export function activate(context: vscode.ExtensionContext) {
             const createTxtByDefault = config.get<boolean>('createTxtFileByDefault') === true;
             const ignoreFolderPaths = config.get<string[]>('ignoreFolderPaths') || [];
 
-            // Check if the selected URI itself should be ignored (this is new!)
+            // If we're explicitly selecting a folder, check if it should be ignored
             const stats = await fs.stat(uri.fsPath);
-            if (stats.isDirectory()) {
+            if (stats.isDirectory() && !selectedUris) {
                 const folderName = path.basename(uri.fsPath);
                 // Check if the folder name or path contains any of the ignore patterns
                 if (ignoreFolderPaths.some(pattern => 
@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
             // Determine if we have multiple items selected
             const allItems = selectedUris || [uri];
             
-            // Filter out any items that match ignore patterns (this is new!)
+            // Filter out any items that match ignore patterns
             const filteredItems = await Promise.all(allItems.map(async item => {
                 const itemStats = await fs.stat(item.fsPath);
                 const itemName = path.basename(item.fsPath);
@@ -108,7 +108,6 @@ export function activate(context: vscode.ExtensionContext) {
             }
             
             // Handle single item (file or folder)
-            // We already checked if this folder should be ignored above
             if (stats.isDirectory()) {
                 const folderPath = uri.fsPath;
                 const folderName = path.basename(folderPath);
@@ -158,6 +157,19 @@ function shouldIgnorePath(pathToCheck: string, ignoreFolderPaths: string[]): boo
     });
 }
 
+// Check if a path is a child of another path
+function isChildPath(childPath: string, parentPath: string): boolean {
+    const relativePath = path.relative(parentPath, childPath);
+    return relativePath !== '' && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+// Helper function to get folder display name
+function getFolderDisplayName(folderPath: string, rootPath: string): string {
+    const relativePath = path.relative(rootPath, folderPath);
+    // If the relative path is empty, use the folder name instead
+    return relativePath || path.basename(folderPath);
+}
+
 // New function to process multiple items (folders and files)
 async function processMultipleItems(
     folders: vscode.Uri[],
@@ -181,12 +193,22 @@ async function processMultipleItems(
         output += `Root Path: ${rootPath}\n`;
         output += `Scan Date: ${new Date().toISOString()}\n`;
         
-        // Collect all files from all folders and individual files
+        // Keep track of all processed files to avoid duplicates
+        const processedFilePaths = new Set<string>();
         const allFiles: { path: string, relativePath: string }[] = [];
         const directoryStructure = new Map<string, string[]>();
         
+        // First, list all selected folders
+        output += 'SELECTED ITEMS\n==============\n';
+        folders.forEach(folder => {
+            // Use the new helper function to get a proper display name
+            const displayName = getFolderDisplayName(folder.fsPath, rootPath);
+            output += `${displayName} (folder)\n`;
+        });
+        
         // Process folders
         let processedFolders = 0;
+        
         for (const folder of folders) {
             const folderPath = folder.fsPath;
             const folderName = path.basename(folderPath);
@@ -196,23 +218,33 @@ async function processMultipleItems(
                 increment: folders.length > 0 ? (40 / folders.length) : 0
             });
             
+            // Get all files from this folder that aren't in ignored paths
             const folderFiles = await getAllFiles(folderPath, ignoreFolderPaths, ignoreFileExtensions, ignoreFiles);
             
-            // Build directory structure
+            // Add these files to our combined collection, avoiding duplicates
             for (const file of folderFiles) {
-                const relDir = path.relative(folderPath, path.dirname(file));
-                const fileName = path.basename(file);
-                const structureKey = path.join(folderName, relDir);
-                
-                if (!directoryStructure.has(structureKey)) {
-                    directoryStructure.set(structureKey, []);
+                if (!processedFilePaths.has(file)) {
+                    processedFilePaths.add(file);
+                    
+                    const relDir = path.relative(folderPath, path.dirname(file));
+                    const fileName = path.basename(file);
+                    
+                    // Get display name for the structure
+                    let structureKey = getFolderDisplayName(folderPath, rootPath);
+                    if (relDir) {
+                        structureKey = path.join(structureKey, relDir);
+                    }
+                    
+                    if (!directoryStructure.has(structureKey)) {
+                        directoryStructure.set(structureKey, []);
+                    }
+                    directoryStructure.get(structureKey)?.push(fileName);
+                    
+                    allFiles.push({
+                        path: file,
+                        relativePath: path.join(folderName, path.relative(folderPath, file))
+                    });
                 }
-                directoryStructure.get(structureKey)?.push(fileName);
-                
-                allFiles.push({
-                    path: file,
-                    relativePath: path.join(folderName, path.relative(folderPath, file))
-                });
             }
             
             processedFolders++;
@@ -242,33 +274,33 @@ async function processMultipleItems(
             return true;
         });
         
-        // Add individual files to structure
-        for (const file of filteredFiles) {
-            const dirName = path.relative(rootPath, path.dirname(file.fsPath));
-            const fileName = path.basename(file.fsPath);
-            
-            if (!directoryStructure.has(dirName)) {
-                directoryStructure.set(dirName, []);
-            }
-            directoryStructure.get(dirName)?.push(fileName);
-            
-            allFiles.push({
-                path: file.fsPath,
-                relativePath: path.relative(rootPath, file.fsPath)
-            });
-        }
-        
-        output += `Total Files: ${allFiles.length}\n\n`;
-        
-        // Add selected items section
-        output += 'SELECTED ITEMS\n==============\n';
-        folders.forEach(folder => {
-            output += `${path.relative(rootPath, folder.fsPath)} (folder)\n`;
-        });
+        // Add filtered files to selected items
         filteredFiles.forEach(file => {
             output += `${path.relative(rootPath, file.fsPath)}\n`;
         });
         output += '\n';
+        
+        // Add individual files to structure
+        for (const file of filteredFiles) {
+            if (!processedFilePaths.has(file.fsPath)) {
+                processedFilePaths.add(file.fsPath);
+                
+                const dirName = path.relative(rootPath, path.dirname(file.fsPath));
+                const fileName = path.basename(file.fsPath);
+                
+                if (!directoryStructure.has(dirName)) {
+                    directoryStructure.set(dirName, []);
+                }
+                directoryStructure.get(dirName)?.push(fileName);
+                
+                allFiles.push({
+                    path: file.fsPath,
+                    relativePath: path.relative(rootPath, file.fsPath)
+                });
+            }
+        }
+        
+        output += `Total Files: ${allFiles.length}\n\n`;
         
         // Add directory structure section (at the top as requested)
         output += 'DIRECTORY STRUCTURE\n==================\n';
