@@ -624,6 +624,8 @@ async function getAllFiles(
         }
     }
 
+    //test123
+
     await traverse(dirPath);
     return files;
 }
